@@ -1,0 +1,492 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Creates a pipeline in AWS CodePipeline that uses AWS CodeBuild to build source code stored in AWS CodeCommit.",
+  "Parameters": {
+    "CodeGitRepo": {
+      "Type": "String",
+      "Description": "The name of the existing AWS CodeCommit repository that contains the source code to build."
+    },
+    "CodeGitBranch": {
+      "Type": "String",
+      "Description": "The name of the branch in the existing AWS CodeCommit repository that contains the source code to build."
+    },
+    "DeployGitRepo": {
+      "Type": "String",
+      "Description": "The name of the existing AWS CodeCommit repository that contains the source code to build."
+    },
+    "DeployGitBranch": {
+      "Type": "String",
+      "Description": "The name of the branch in the existing AWS CodeCommit repository that contains the source code to build."
+    },
+    "GitRepoOwner" : {
+      "Type" : "String",
+      "Description": "Supply the GitHub for the pipeline to assume"
+    },
+    "GitOAuthToken" : {
+      "Type" : "String",
+      "Description" : "Supply the OAuth token for the associated user",
+      "NoEcho" : true
+    },
+    "BuildProjectName": {
+      "Type": "String",
+      "Description": "CodeBuild Project for the Int build"
+    },
+    "BuildEnvironmentName": {
+      "Type": "String",
+      "Description": "Build Environment name for the Int build"
+    },
+    "UnitTestProjectName": {
+      "Type": "String",
+      "Description": "CodeBuild Project for the Int build"
+    },
+    "UnitTestEnvironmentName": {
+      "Type": "String",
+      "Description": "Build Environment name for the Int build"
+    },
+    "LintProjectName": {
+      "Type": "String",
+      "Description": "CodeBuild Project for the Int build"
+    },
+    "LintEnvironmentName": {
+      "Type": "String",
+      "Description": "Build Environment name for the Int build"
+    },
+    "IntDeployProjectName": {
+      "Type": "String",
+      "Description": "CodeBuild Project for the Int build"
+    },
+    "IntDeployEnvironmentName": {
+      "Type": "String",
+      "Description": "Build Environment name for the Int build"
+    },
+    "CertDeployProjectName": {
+      "Type": "String",
+      "Description": "CodeBuild Project name for the Cert build"
+    },
+    "CertDeployEnvironmentName": {
+      "Type": "String",
+      "Description": "Build Environment name for Cert build project"
+    },
+    "SmokeDeployProjectName": {
+      "Type": "String",
+      "Description": "CodeBuild Project name for the Prod build project"
+    },
+    "SmokeDeployEnvironmentName": {
+      "Type": "String",
+      "Description": "Build Environment name for the Prod build project."
+    },
+    "ProdDeployProjectName": {
+      "Type": "String",
+      "Description": "CodeBuild Project name for the Prod build project"
+    },
+    "ProdDeployEnvironmentName": {
+      "Type": "String",
+      "Description": "Build Environment name for the Prod build project."
+    },
+    "PipelineName": {
+      "Type": "String",
+      "Description": "The name of the new pipeline in AWS CodePipeline"
+    },
+    "WorkspaceBucketName" : {
+      "Type" : "String",
+      "Description" : "Specify the name of the bucket to create for this pipelines workspace."
+    },
+    "ArtifactKey" : {
+      "Type" : "String",
+      "Description" : "Specify the complete key for the Int artifact to be named"
+    },
+    "PipelineArtifactSaveFunction" : {
+      "Type" : "String",
+      "Description" : "The name of the function user to save pipeline artifacts in this account"
+    }
+  },
+  "Resources": {
+    "ArtifactBuildPipeline": {
+      "Type": "AWS::CodePipeline::Pipeline",
+      "Properties": {
+        "ArtifactStore": {
+          "Location": {
+            "Ref": "CodePipelineWorkspaceBucket"
+          },
+          "Type": "S3"
+        },
+        "Name": {
+          "Ref": "PipelineName"
+        },
+        "RestartExecutionOnUpdate": true,
+        "RoleArn": { "Fn::GetAtt" : [ "CodePipelineServiceRole", "Arn" ] },
+        "Stages": [
+          {
+            "Name": "Source",
+            "Actions": [
+              {
+                "Name": "Code",
+                "ActionTypeId": {
+                  "Version": "1",
+                  "Category": "Source",
+                  "Owner": "ThirdParty",
+                  "Provider": "GitHub"
+                },
+                "Configuration": {
+                  "Owner" : { "Ref" : "GitRepoOwner" },
+                  "Repo": { "Ref": "CodeGitRepo" },
+                  "Branch": { "Ref": "CodeGitBranch" },
+                  "OAuthToken" : { "Ref" : "GitOAuthToken" }
+                },
+                "InputArtifacts": [],
+                "OutputArtifacts": [
+                  {
+                    "Name": "CodeSource"
+                  }
+                ],
+                "RunOrder": 1
+              },
+              {
+                "Name": "Resources",
+                "ActionTypeId": {
+                  "Version": "1",
+                  "Category": "Source",
+                  "Owner": "ThirdParty",
+                  "Provider": "GitHub"
+                },
+                "Configuration": {
+                  "Owner" : { "Ref" : "GitRepoOwner" },
+                  "Repo": { "Ref": "DeployGitRepo" },
+                  "Branch": { "Ref": "DeployGitBranch" },
+                  "OAuthToken" : { "Ref" : "GitOAuthToken" }
+                },
+                "InputArtifacts": [],
+                "OutputArtifacts": [
+                  {
+                    "Name": "DeploySource"
+                  }
+                ],
+                "RunOrder": 1
+              }
+            ]
+          },
+          {
+            "Name": "Build",
+            "Actions": [
+              {
+                "Name": "Build",
+                "InputArtifacts": [
+                  {
+                    "Name": "CodeSource"
+                  }
+                ],
+
+                "ActionTypeId": {
+                  "Category": "Build",
+                  "Owner": "AWS",
+                  "Version": "1",
+                  "Provider": "CodeBuild"
+                },
+                "OutputArtifacts": [ { "Name": { "Ref" : "BuildEnvironmentName" } } ],
+                "Configuration": {
+                  "ProjectName": { "Ref": "BuildProjectName" }
+                },
+                "RunOrder": 2
+              },
+              {
+                "Name": "UnitTest",
+                "InputArtifacts": [
+                  {
+                    "Name": "CodeSource"
+                  }
+                ],
+
+                "ActionTypeId": {
+                  "Category": "Build",
+                  "Owner": "AWS",
+                  "Version": "1",
+                  "Provider": "CodeBuild"
+                },
+                "OutputArtifacts": [ { "Name": { "Ref" : "UnitTestEnvironmentName" } } ],
+                "Configuration": {
+                  "ProjectName": { "Ref": "UnitTestProjectName" }
+                },
+                "RunOrder": 1
+              },
+              {
+                "Name": "Lint",
+                "InputArtifacts": [
+                  {
+                    "Name": "CodeSource"
+                  }
+                ],
+
+                "ActionTypeId": {
+                  "Category": "Build",
+                  "Owner": "AWS",
+                  "Version": "1",
+                  "Provider": "CodeBuild"
+                },
+                "OutputArtifacts": [ { "Name": { "Ref" : "LintEnvironmentName" } } ],
+                "Configuration": {
+                  "ProjectName": { "Ref": "LintProjectName" }
+                },
+                "RunOrder": 1
+              }
+            ]
+          },
+          {
+            "Name" : "Publish",
+            "Actions" : [
+              {
+                "Name": "Publisher",
+                "ActionTypeId": {
+                  "Category": "Invoke",
+                  "Owner": "AWS",
+                  "Version": "1",
+                  "Provider": "Lambda"
+                },
+                "InputArtifacts": [ { "Name": { "Ref" : "BuildEnvironmentName" }  } ],
+                "OutputArtifacts": [ { "Name": "IntArtifacts" } ],
+                "Configuration": {
+                  "FunctionName": { "Ref": "PipelineArtifactSaveFunction" },
+                  "UserParameters" : { "Fn::Join" : [ ".", [ { "Ref" : "WorkspaceBucketName" }, { "Ref" : "ArtifactKey"}]]}
+                },
+                "RunOrder": 1
+              }
+            ]
+          },
+          {
+            "Name" : "Integration",
+            "Actions" : [
+              {
+                "Name": "Deploy",
+                "InputArtifacts": [
+                  {
+                    "Name": "DeploySource"
+                  }
+                ],
+
+                "ActionTypeId": {
+                  "Category": "Build",
+                  "Owner": "AWS",
+                  "Version": "1",
+                  "Provider": "CodeBuild"
+                },
+                "OutputArtifacts": [ { "Name": { "Ref" : "IntDeployEnvironmentName" } } ],
+                "Configuration": {
+                  "ProjectName": { "Ref": "IntDeployProjectName" }
+                },
+                "RunOrder": 1
+              }
+            ]
+          },
+          {
+            "Name" : "Certification",
+            "Actions" : [
+              {
+                "Name": "Deploy",
+                "InputArtifacts": [
+                  {
+                    "Name": "DeploySource"
+                  }
+                ],
+
+                "ActionTypeId": {
+                  "Category": "Build",
+                  "Owner": "AWS",
+                  "Version": "1",
+                  "Provider": "CodeBuild"
+                },
+                "OutputArtifacts": [ { "Name": { "Ref" : "CertDeployEnvironmentName" } } ],
+                "Configuration": {
+                  "ProjectName": { "Ref": "CertDeployProjectName" }
+                },
+                "RunOrder": 1
+              }
+            ]
+          },
+          {
+            "Name" : "Production",
+            "Actions" : [
+              {
+                "Name": "Smoke",
+                "InputArtifacts": [
+                  {
+                    "Name": "DeploySource"
+                  }
+                ],
+
+                "ActionTypeId": {
+                  "Category": "Build",
+                  "Owner": "AWS",
+                  "Version": "1",
+                  "Provider": "CodeBuild"
+                },
+                "OutputArtifacts": [ { "Name": { "Ref" : "SmokeDeployEnvironmentName" } } ],
+                "Configuration": {
+                  "ProjectName": { "Ref": "SmokeDeployProjectName" }
+                },
+                "RunOrder": 1
+              },
+              {
+                "Name": "Deploy",
+                "InputArtifacts": [
+                  {
+                    "Name": "DeploySource"
+                  }
+                ],
+
+                "ActionTypeId": {
+                  "Category": "Build",
+                  "Owner": "AWS",
+                  "Version": "1",
+                  "Provider": "CodeBuild"
+                },
+                "OutputArtifacts": [ { "Name": { "Ref" : "ProdDeployEnvironmentName" } } ],
+                "Configuration": {
+                  "ProjectName": { "Ref": "ProdDeployProjectName" }
+                },
+                "RunOrder": 2
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "CodePipelineServiceRole": {
+      "Type": "AWS::IAM::Role",
+      "DependsOn" : [ "CodePipelineWorkspaceBucket" ],
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version" : "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "codepipeline.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyName": { "Fn::Join" : [ "", [ {"Ref" : "PipelineName" }, "ExecutionPolicy"]]},
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "s3:*"
+                  ],
+                  "Resource": "*",
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "s3:PutObject*",
+                    "s3:ReplicateObject"
+                  ],
+                  "Resource": [
+                    { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "WorkspaceBucketName" }]]}
+                  ],
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "cloudformation:*",
+                    "iam:PassRole"
+                  ],
+                  "Resource": "*",
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "lambda:InvokeFunction",
+                    "lambda:ListFunctions"
+                  ],
+                  "Resource": "*",
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "codebuild:*"
+                  ],
+                  "Resource": "*",
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "CodePipelineWorkspaceBucket": {
+      "Type" : "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": {
+          "Ref": "WorkspaceBucketName"
+        },
+        "VersioningConfiguration" : {
+          "Status": "Enabled"
+        }
+      }
+    },
+    "S3ArtifactBucketPolicy": {
+      "Type" : "AWS::S3::BucketPolicy",
+      "Properties" : {
+        "Bucket" : { "Ref": "CodePipelineWorkspaceBucket" },
+        "PolicyDocument" : {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "DenyUnEncryptedObjectUploads",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:PutObject",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "", [
+                      "arn:aws:s3:::",
+                      { "Ref": "WorkspaceBucketName" },
+                      "/*"
+                    ]
+                  ]
+                }
+              ],
+              "Condition": {
+                "StringNotEquals": {
+                  "s3:x-amz-server-side-encryption": "aws:kms"
+                }
+              }
+            },
+            {
+              "Sid": "DenyInsecureConnections",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "", [
+                      "arn:aws:s3:::",
+                      { "Ref": "WorkspaceBucketName" },
+                      "/*"
+                    ]
+                  ]
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": false
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
