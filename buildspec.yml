@@ -14,6 +14,12 @@ phases:
 artifacts:
   files:
     - MyApp::Sample Repo//Artifacts//wordpress-single-instance//wordpress-single-instance.yaml
-    - MyApp::Sample Repo\\Artifacts\\wordpress-single-instance\\prod-stack-configuration.json
+    - Sample Repo\\Artifacts\\wordpress-single-instance\\prod-stack-configuration.json
     - MyApp::README.md
+    - MyApp
+    - Sample Repo//Artifacts//wordpress-single-instance//wordpress-single-instance.yaml
+    - Sample Repo\\Artifacts\\wordpress-single-instance\\prod-stack-configuration.json
+    - README.md
+    - target/README.md
+
   discard-paths: yes
