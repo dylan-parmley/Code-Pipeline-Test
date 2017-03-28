@@ -8,11 +8,10 @@ phases:
   build:
     commands:
       - echo Build started on `date`
-      - mkdir TestDir
-      - cp "Sample Repo/Artifacts/wordpress-single-instance/wordpress-single-instance.yaml" TestDir/
-      - cp "Sample Repo/Artifacts/wordpress-single-instance/prod-stack-configuration.json" TestDir/
+      #- cp Path1 nameOfDir/filename.fileext
 
 artifacts:
   files:
-    - TestDir
+    - Sample Repo/Artifacts/wordpress-single-instance/wordpress-single-instance.yaml
+    - Sample Repo/Artifacts/wordpress-single-instance/prod-stack-configuration.json
   discard-paths: yes
