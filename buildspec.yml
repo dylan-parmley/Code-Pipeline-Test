@@ -9,8 +9,8 @@ phases:
     commands:
       - echo Build started on `date`
       - mkdir TestDir
-      - cp Sample Repo/Artifacts/wordpress-single-instance/wordpress-single-instance.yaml TestDir/wordpress-single-instance.yaml
-      - cp Sample Repo/Artifacts/wordpress-single-instance/prod-stack-configuration.json TestDir/prod-stack-configuration.json
+      - cp Sample Repo/Artifacts/wordpress-single-instance/wordpress-single-instance.yaml TestDir/
+      - cp Sample Repo/Artifacts/wordpress-single-instance/prod-stack-configuration.json TestDir/
 
 artifacts:
   files:
