@@ -4,16 +4,15 @@ phases:
   install:
     commands:
         - echo Nothing to do in the install phase...
-  pre_build:
-    commands:
-      - echo Nothing to do in the pre_build phase...
+
   build:
     commands:
       - echo Build started on `date`
-  post_build:
-    commands:
-      - echo Build completed on `date`
+      #- mkdir nameOfDir
+      #- cp Path1 nameOfDir/filename.fileext
+
 artifacts:
   files:
-    - target/messageUtil-1.0.jar
+    - MyApp::Sample Repo\\Artifacts\\wordpress-single-instance\\wordpress-single-instance.yaml
+    - MyApp::Sample Repo\\Artifacts\\wordpress-single-instance\\prod-stack-configuration.json
   discard-paths: yes
